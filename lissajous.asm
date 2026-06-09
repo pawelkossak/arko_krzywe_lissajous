@@ -1,16 +1,16 @@
 section .data
 header_start:
-        db "BM"
-        dd 786486
+        db "BM" ; bitmapa
+        dd 786486 ; rozmiar pliku - 54 naglowek + 3 bajty * 512^2
         dw 0, 0
-        dd 54
-        dd 40
-        dd 512
-        dd 512
-        dw 1
-        dw 24
-        dd 0
-        dd 786432
+        dd 54 ; offset (naglowka)
+        dd 40 ; druga czesc naglowka
+        dd 512 ; szerokosc
+        dd 512 ; wysokosc
+        dw 1 ; liczba plaszczyzn binarnych
+        dw 24 ; glebia kolorow 2^3 (RGB)
+        dd 0 ; brak kompresji
+        dd 786432 ; 3 bajty * 512^2
         dd 2835, 2835
         dd 0, 0
 

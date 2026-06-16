@@ -1,11 +1,14 @@
 #include <gtk/gtk.h>
 #include <stdlib.h>
 
-extern void generateLissajousCurves(int a, int b, double beta, char *outputImg);
+extern void generateLissajousCurves(int a, int b, double beta, int width, int height, char *outputImg);
+
 typedef struct {
     GtkAdjustment *adj1;
     GtkAdjustment *adj2;
     GtkAdjustment *adj3;
+    GtkAdjustment *adj4;
+    GtkAdjustment *adj5;
     GtkWidget *main_image;
     GtkWidget *scrolled_window;
     GdkPixbuf *original_pixbuf;
@@ -62,20 +65,28 @@ void on_submit_button_clicked(GtkButton *button, AppWidgets *widgets) {
     double val1 = gtk_adjustment_get_value(widgets->adj1);
     double val2 = gtk_adjustment_get_value(widgets->adj2);
     double val3 = gtk_adjustment_get_value(widgets->adj3);
+    double width = gtk_adjustment_get_value(widgets->adj4);
+    double height = gtk_adjustment_get_value(widgets->adj5);
 
-    // g_print("--- New parameters have been loaded. ---\n");
-    // g_print("Parameter 1: %.2f\n", val1);
-    // g_print("Parameter 2: %.2f\n", val2);
-    // g_print("Parameter 3: %.2f\n", val3);
-    
-    generateLissajousCurves((int)val1, (int)val2, val3, "output.bmp");
+    generateLissajousCurves((int)val1, (int)val2, val3, (int)width, (int)height, "output.bmp");
 
     if (widgets->original_pixbuf) {
         g_object_unref(widgets->original_pixbuf);
     }
     
     widgets->original_pixbuf = gdk_pixbuf_new_from_file("output.bmp", NULL);
-    widgets->zoom_level = 1.0;
+    
+    if (widgets->original_pixbuf) {
+        int img_w = gdk_pixbuf_get_width(widgets->original_pixbuf);
+        int img_h = gdk_pixbuf_get_height(widgets->original_pixbuf);
+        
+        double zoom_x = 512.0 / img_w;
+        double zoom_y = 512.0 / img_h;
+        
+        widgets->zoom_level = (zoom_x < zoom_y) ? zoom_x : zoom_y;
+    } else {
+        widgets->zoom_level = 1.0;
+    }
     
     update_image_zoom(widgets);
 }
@@ -163,6 +174,8 @@ int main(int argc, char *argv[]) {
     widgets->adj1 = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adj1"));
     widgets->adj2 = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adj2"));
     widgets->adj3 = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adj3"));
+    widgets->adj4 = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adj4"));
+    widgets->adj5 = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adj5"));
     widgets->main_image = GTK_WIDGET(gtk_builder_get_object(builder, "main_image"));
     widgets->scrolled_window = GTK_WIDGET(gtk_builder_get_object(builder, "scrolled_window"));
 

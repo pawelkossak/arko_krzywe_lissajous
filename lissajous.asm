@@ -1,111 +1,166 @@
 section .data
-header_start:
-        db "BM" ; bitmapa
-        dd 786486 ; rozmiar pliku - 54 naglowek + 3 bajty * 512^2
-        dw 0, 0
-        dd 54 ; offset (naglowka)
-        dd 40 ; druga czesc naglowka
-        dd 512 ; szerokosc
-        dd 512 ; wysokosc
-        dw 1 ; liczba plaszczyzn binarnych
-        dw 24 ; glebia kolorow 2^3 (RGB)
-        dd 0 ; brak kompresji
-        dd 786432 ; 3 bajty * 512^2
-        dd 2835, 2835
-        dd 0, 0
-
-amp     dq 250.0
-center  dq 256.0
 step    dq 0.001
 max_t   dq 100.0
+margin  dd 10
+two     dd 2
 
-        section .bss
-grid    resb 786432
-
-        section .text
-        bits 64
-        global generateLissajousCurves
+section .text
+bits 64
+global generateLissajousCurves
 
 generateLissajousCurves:
-        push    rbp
-        mov     rbp, rsp
-        sub     rsp, 48
+        push rbp
+        mov rbp, rsp
+        sub rsp, 1216
 
-        mov     dword [rbp - 12], edi
-        mov     dword [rbp - 16], esi
-        movsd   qword [rbp - 24], xmm0
-        mov     qword [rbp - 32], rdx
+        mov dword [rbp-4], edi
+        mov dword [rbp-8], esi
+        movsd qword [rbp-16], xmm0
+        mov dword [rbp-20], edx
+        mov dword [rbp-24], ecx
+        mov qword [rbp-32], r8
 
-        mov     rdi, grid
-        mov     rcx, 786432
-        mov     al, 255
-        rep     stosb
+        mov eax, edx
+        add eax, 3
+        and eax, -4
+        mov dword [rbp-36], eax
+
+        imul eax, ecx
+        mov dword [rbp-40], eax
+
+        mov rdi, 0
+        mov esi, dword [rbp-40]
+        mov rdx, 3
+        mov r10, 0x22
+        mov r8, -1
+        mov r9, 0
+        mov rax, 9
+        syscall
+        mov qword [rbp-48], rax
+
+        mov rdi, rax
+        mov ecx, dword [rbp-40]
+        mov al, 255
+        rep stosb
+
+        fild dword [rbp-20]
+        fidiv dword [two]
+        fst qword [rbp-56]
+        fisub dword [margin]
+        fstp qword [rbp-64]
+
+        fild dword [rbp-24]
+        fidiv dword [two]
+        fst qword [rbp-72]
+        fisub dword [margin]
+        fstp qword [rbp-80]
 
         fldz
-        fstp    qword [rbp - 8]
+        fstp qword [rbp-88]
 
 .calc_loop:
-        fld     qword [rbp - 8]
-        fimul   dword [rbp - 12]
-        fadd    qword [rbp - 24]
+        fld qword [rbp-88]
+        fimul dword [rbp-4]
+        fadd qword [rbp-16]
         fsin
-        fmul    qword [amp]
-        fadd    qword [center]
-        fistp   dword [rbp - 36]
+        fmul qword [rbp-64]
+        fadd qword [rbp-56]
+        fistp dword [rbp-92]
 
-        fld     qword [rbp - 8]
-        fimul   dword [rbp - 16]
+        fld qword [rbp-88]
+        fimul dword [rbp-8]
         fsin
-        fmul    qword [amp]
-        fadd    qword [center]
-        fistp   dword [rbp - 40]
+        fmul qword [rbp-80]
+        fadd qword [rbp-72]
+        fistp dword [rbp-96]
 
-        mov     eax, dword [rbp - 40]
-        shl     eax, 9
-        add     eax, dword [rbp - 36]
-        lea     rax, [rax + rax * 2]
+        mov eax, dword [rbp-92]
+        cmp eax, 0
+        jl .skip_pixel
+        cmp eax, dword [rbp-20]
+        jge .skip_pixel
 
-        mov     rcx, grid
-        mov     byte [rcx + rax], 0
-        mov     byte [rcx + rax + 1], 0
-        mov     byte [rcx + rax + 2], 0
+        mov r8d, dword [rbp-96]
+        cmp r8d, 0
+        jl .skip_pixel
+        cmp r8d, dword [rbp-24]
+        jge .skip_pixel
 
-        fld     qword [rbp - 8]
-        fadd    qword [step]
-        fst     qword [rbp - 8]
+        mov eax, r8d
+        imul eax, dword [rbp-36]
+        add eax, dword [rbp-92]
+        mov rdi, qword [rbp-48]
+        add rdi, rax
 
-        fcomp   qword [max_t]
-        fstsw   ax
+        mov byte [rdi], 0
+
+.skip_pixel:
+        fld qword [rbp-88]
+        fadd qword [step]
+        fst qword [rbp-88]
+
+        fcomp qword [max_t]
+        fstsw ax
         sahf
-        jb      .calc_loop
+        jb .calc_loop
 
-        mov     rax, 2
-        mov     rdi, qword [rbp - 32]
-        mov     rsi, 577
-        mov     rdx, 420
+        lea rdi, [rbp-1200]
+        mov ecx, 1078
+        xor al, al
+        rep stosb
+
+        lea rdi, [rbp-1200]
+        mov word [rdi], 0x4D42
+        mov eax, dword [rbp-40]
+        add eax, 1078
+        mov dword [rdi+2], eax
+        mov dword [rdi+10], 1078
+        mov dword [rdi+14], 40
+        mov eax, dword [rbp-20]
+        mov dword [rdi+18], eax
+        mov eax, dword [rbp-24]
+        mov dword [rdi+22], eax
+        mov word [rdi+26], 1
+        mov word [rdi+28], 8
+        mov eax, dword [rbp-40]
+        mov dword [rdi+34], eax
+        mov dword [rdi+38], 2835
+        mov dword [rdi+42], 2835
+        mov dword [rdi+46], 256
+        mov dword [rdi+50], 256
+        mov dword [rdi+1074], 0x00FFFFFF
+
+        mov rax, 2
+        mov rdi, qword [rbp-32]
+        mov rsi, 577
+        mov rdx, 420
+        syscall
+        cmp rax, 0
+        jl .cleanup
+        mov dword [rbp-1204], eax
+
+        mov rax, 1
+        mov edi, dword [rbp-1204]
+        lea rsi, [rbp-1200]
+        mov rdx, 1078
         syscall
 
-        cmp     rax, 0
-        jl      .done
-        mov     r8, rax
-
-        mov     rax, 1
-        mov     rdi, r8
-        mov     rsi, header_start
-        mov     rdx, 54
+        mov rax, 1
+        mov edi, dword [rbp-1204]
+        mov rsi, qword [rbp-48]
+        mov edx, dword [rbp-40]
         syscall
 
-        mov     rax, 1
-        mov     rdi, r8
-        mov     rsi, grid
-        mov     rdx, 786432
+        mov rax, 3
+        mov edi, dword [rbp-1204]
         syscall
 
-        mov     rax, 3
-        mov     rdi, r8
+.cleanup:
+        mov rax, 11
+        mov rdi, qword [rbp-48]
+        mov esi, dword [rbp-40]
         syscall
 
-.done:
-        mov     rsp, rbp
-        pop     rbp
+        mov rsp, rbp
+        pop rbp
         ret
